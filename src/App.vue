@@ -1,47 +1,60 @@
-<script setup>
-import { ref, onMounted, watch, computed } from "vue";
-
-const todos = ref([]);
-const name = ref("");
-
-const input_content = ref("");
-const input_category = ref(null);
-
-const todos_asc = computed(() =>
-  // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-  todos.value.sort((a, b) => {
-    return a.createdAt - b.createdAt;
-  })
-);
-
-const addTodo = () => {
-  if (input_content.value.trim() == "" || input_category.value == null) {
-    return;
-  }
-
-  todos.value.push({
-    content: input_content.value,
-    category: input_category.value,
-    done: false,
-    createdAt: new Date(),
-  });
-};
-
-watch(
-  todos,
-  (newValue) => {
-    localStorage.setItem("todos", newValue);
+<script>
+export default {
+  data() {
+    return {
+      name: "",
+      input_content: "",
+      input_category: null,
+      todos: [],
+    };
   },
-  { deep: true }
-);
+  computed: {
+    todos_asc() {
+      // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+      return this.todos.sort((a, b) => {
+        return a.createdAt - b.createdAt;
+      });
+    },
+  },
+  methods: {
+    addTodo() {
+      this.todos.push({
+        content: this.input_content,
+        category: this.input_category,
+        done: false,
+        createdAt: new Date(),
+      });
 
-watch(name, (newValue) => {
-  localStorage.setItem("name", newValue);
-});
-
-onMounted(() => {
-  name.value = localStorage.getItem("name") || "";
-});
+      this.input_content = "";
+      this.input_category = null;
+    },
+    removeTodo(todo) {
+      this.todos = this.todos.filter(t => t !== todo);
+    },
+    isDone(item) {
+      return item.done ? "done" : "";
+    },
+  },
+  watch: {
+    name(newName) {
+      localStorage.setItem("name", newName);
+    },
+    todos: {
+      handler(newTodos) {
+        localStorage.setItem("todos", JSON.stringify(newTodos));
+      },
+      deep: true,
+    },
+  },
+  mounted() {
+    if (localStorage.name) {
+      this.name = localStorage.getItem("name");
+    }
+    if (localStorage.todos) {
+      this.todos = JSON.parse(localStorage.getItem("todos"));
+    }
+  },
+};
 </script>
 
 <template>
@@ -79,7 +92,7 @@ onMounted(() => {
           <input
             type="radio"
             name="category"
-            value="business"
+            value="personal"
             v-model="input_category"
           />
           <span class="bubble personal"></span>
@@ -88,6 +101,30 @@ onMounted(() => {
       </div>
 
       <input type="submit" value="Add Todo" />
+
+      <section class="todo-list">
+        <h3 class="todo-list__title">ToDo List</h3>
+        <div class="todo-list__list">
+          <div
+            v-for="todo in todos_asc"
+            :key="todo.createdAt"
+            :class="`todo-list__item ${isDone(todo)}`"
+          >
+            <label>
+              <input type="checkbox" v-model="todo.done" />
+              <span :class="`bubble ${todo.category}`" />
+            </label>
+
+            <div class="todo-list__item-content">
+              <input type="text" v-model="todo.content" />
+            </div>
+
+            <div class="actions">
+              <button class="delete" @click="removeTodo(todo)">Delete</button>
+            </div>
+          </div>
+        </div>
+      </section>
     </form>
   </section>
 </template>
